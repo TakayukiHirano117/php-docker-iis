@@ -1,7 +1,0 @@
-やること
-php.ini-productionをコピー
-php.ini-productionの中身を書き換える。
-php.ini-productionの名前をphp.iniに変更。
-
-いや、
-あらかじめphp.ini作っといてそれをコンテナの中にコピーだな。
