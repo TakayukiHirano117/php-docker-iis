@@ -1,0 +1,51 @@
+FROM mcr.microsoft.com/windows/servercore/iis
+
+# RUN powershell -Command \
+#     Install-WindowsFeature -name Web-Server -IncludeManagementTools; \
+#     Install-WindowsFeature -name Web-WebServer; \
+#     Install-WindowsFeature -name Web-ASP; \
+#     Install-WindowsFeature -name Web-Asp-Net45; \
+#     Install-WindowsFeature -name Web-ISAPI-Ext; \
+#     Install-WindowsFeature -name Web-ISAPI-Filter; \
+#     Install-WindowsFeature -name Web-Mgmt-Console; \
+#     Install-WindowsFeature -name Web-Scripting-Tools
+
+# 環境変数の設定
+ENV PHP_VERSION 8.2.20
+ENV PHP_DOWNLOAD_URL https://windows.php.net/downloads/releases/archives/php-8.2.20-nts-Win32-vs16-x64.zip
+ENV PHP_INSTALL_DIR C:\inetpub\php
+
+# powershellを使うと宣言
+SHELL ["powershell", "-NoProfile", "-Command"]
+
+# tls1.2を使うように指定
+RUN [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;\
+    Invoke-WebRequest -Uri https://windows.php.net/downloads/releases/archives/php-8.2.20-nts-Win32-vs16-x64.zip -OutFile 'php.zip'; \
+    New-Item -Path $env:PHP_INSTALL_DIR -ItemType Directory -Force; \
+    Expand-Archive -Path 'php.zip' -DestinationPath C:\inetpub\php; \
+    Remove-Item -Force 'php.zip';
+    # setx /M PATH $('C:\inetpub\php' + $env:PATH)
+
+RUN Import-Module IISAdministration; \
+    New-IISSite -Name "MyPHPApp" -PhysicalPath C:\inetpub\wwwroot -BindingInformation "*:80:"; \
+    Add-WindowsFeature Web-Scripting-Tools
+
+# PHP拡張モジュールの設定（必要に応じて追加）
+# これはphp.iniをこぴって持っていけばいいので要らなくないか
+
+
+# RUN Copy-Item "$env:PHP_INSTALL_DIR\php.ini-development" "$env:PHP_INSTALL_DIR\php.ini"; \
+#     Add-Content "$env:PHP_INSTALL_DIR\php.ini" "`r`n[PHP]`r`nextension_dir = ""ext""`r`nextension = php_mysql.dll`r`n"
+
+# RUN Set-ItemProperty -Path "HKLM:\Software\Microsoft\IIS Extensions" -Name "php" -Value "$env:PHP_INSTALL_DIR\php-cgi.exe"
+
+RUN icacls 'C:\inetpub\wwwroot' /grant 'IIS_IUSRS:(OI)(CI)F' /T
+
+# IISのデフォルトのページを削除
+RUN Remove-Item -Recurse C:\inetpub\wwwroot\*
+WORKDIR C:\\inetpub\\wwwroot
+COPY . .
+
+RUN Move-Item -Path C:\inetpub\wwwroot\php.ini -Destination C:\inetpub\php
+
+EXPOSE 80
