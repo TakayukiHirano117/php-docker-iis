@@ -3,5 +3,11 @@ services:
     build: .
     ports:
       - "80:80"
-    # volumes:
-    #   - ./web:\inetpub\wwwroot
+    volumes:
+      - ./web:C:\volumes
+    networks:
+      - php-iis_default
+
+networks:
+  php-iis_default:
+    external: true
